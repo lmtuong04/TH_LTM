@@ -1,0 +1,4 @@
+# Code sửa trên Windows nhưng build trên WSL/Pi: luôn giữ LF
+* text=auto eol=lf
+*.png binary
+*.jpg binary

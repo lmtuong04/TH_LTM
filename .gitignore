@@ -1,0 +1,13 @@
+build/
+*.o
+*.d
+*.gcda
+*.gcno
+*.gcov
+coverage*.html
+
+# dữ liệu chạy thử của app/device
+*.dat
+app_id.txt
+
+.vscode/

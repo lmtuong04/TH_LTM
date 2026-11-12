@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # cần toàn bộ lịch sử để kiểm tra giờ commit
+
+      - name: Cai cong cu
+        run: sudo apt-get update && sudo apt-get install -y build-essential gcovr valgrind netcat-openbsd
+
+      - name: Build (ban console)
+        run: make
+
+      - name: Unit test
+        run: make test
+
+      - name: Coverage >= 90%
+        run: make coverage
+
+      - name: Upload bao cao coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build/cov/coverage*.html
+          if-no-files-found: ignore
+
+      - name: Test tich hop
+        run: make itest
+
+      - name: Kiem tra gio commit
+        run: |
+          if [ -x tools/check_commits.sh ]; then tools/check_commits.sh;
+          else echo "Chua co tools/check_commits.sh (task B5)"; fi
