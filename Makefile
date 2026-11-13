@@ -43,7 +43,7 @@ APP_BIN    := $(BUILD)/smarthome_app
 TEST_BINS  := $(patsubst tests/%.c,$(BUILD)/tests/%,$(TEST_SRC))
 TEST_DEPS  := $(call obj,$(COMMON_SRC) $(DEVICE_LIB) $(TEST_HW_SRC) $(APP_LIB))
 
-.PHONY: all test coverage loadtest itest clean
+.PHONY: all test coverage memcheck loadtest itest clean
 .SECONDARY:
 
 all: $(DEVICE_BIN) $(APP_BIN)
@@ -67,6 +67,11 @@ $(OBJ)/%.o: %.c
 test: $(TEST_BINS)
 	@set -e; for t in $(TEST_BINS); do echo "== $$t"; ./$$t; done
 	@echo "Tat ca test PASS"
+
+memcheck: test
+	@set -e; for t in $(TEST_BINS); do echo "== valgrind $$t"; \
+	    valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./$$t; \
+	done
 
 coverage:
 	rm -rf $(BUILD)/cov
