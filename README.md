@@ -26,6 +26,9 @@ make coverage     # coverage, fail nếu < 90% (báo cáo: build/cov/coverage.ht
 make HW=gpio      # bản mô hình, chỉ build trên Raspberry Pi (cần libgpiod-dev)
 ```
 
+Storage của app dùng file text; `app_id` được sinh một lần từ `/dev/urandom`
+và được giữ nguyên khi đọc/ghi lại model.
+
 ## Cấu trúc
 
 ```

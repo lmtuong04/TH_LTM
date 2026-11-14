@@ -13,6 +13,7 @@
 #define MODEL_TYPE_LEN   16
 #define MODEL_IP_LEN     64
 #define MODEL_TOKEN_LEN  64
+#define MODEL_APP_ID_LEN 33
 
 typedef struct {
     char id[MODEL_ID_LEN];        /* LIGHT-01, FAN-01 ... */
@@ -40,6 +41,7 @@ typedef struct {
     House *houses;
     size_t n_houses;
     size_t cap_houses;
+    char app_id[MODEL_APP_ID_LEN];
 } Model;
 
 /* Tên hợp lệ: không rỗng, vừa bộ đệm, không có ký tự điều khiển. */
