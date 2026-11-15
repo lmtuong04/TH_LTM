@@ -29,6 +29,9 @@ make HW=gpio      # bản mô hình, chỉ build trên Raspberry Pi (cần libgp
 Storage của app dùng file text; `app_id` được sinh một lần từ `/dev/urandom`
 và được giữ nguyên khi đọc/ghi lại model.
 
+Chạy `build/smarthome_app` để mở menu quản lý nhà/phòng. Dữ liệu được lưu vào
+`app.dat` khi thoát; menu nhận lựa chọn và tên qua `fgets`.
+
 ## Cấu trúc
 
 ```
