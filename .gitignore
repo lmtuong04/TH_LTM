@@ -11,3 +11,8 @@ coverage*.html
 app_id.txt
 
 .vscode/
+
+# tài liệu nội bộ, không đưa lên repo
+doccument/
+.doccument/
+
