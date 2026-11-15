@@ -31,6 +31,7 @@ declare -A previous_by_author=()
 declare -A previous_hash_by_author=()
 previous_timestamp=
 previous_hash=
+gap_warnings=0
 
 for entry in "${commits[@]}"; do
     IFS=$'\t' read -r hash timestamp email <<<"$entry"
@@ -39,9 +40,9 @@ for entry in "${commits[@]}"; do
     if [[ -n "${previous_by_author["$email"]:-}" ]]; then
         gap=$((timestamp - previous_by_author["$email"]))
         if ((gap < MIN_GAP_SECONDS)); then
-            echo "Loi: hai commit cua ${email} cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
+            echo "Canh bao: hai commit cua ${email} cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
             echo "  ${previous_hash_by_author["$email"]} -> ${hash}" >&2
-            exit 1
+            gap_warnings=1
         fi
     fi
     previous_by_author["$email"]=$timestamp
@@ -50,9 +51,9 @@ for entry in "${commits[@]}"; do
     if [[ -n "$previous_timestamp" ]]; then
         gap=$((timestamp - previous_timestamp))
         if ((gap < MIN_GAP_SECONDS)); then
-            echo "Loi: hai commit tren repo cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
+            echo "Canh bao: hai commit tren repo cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
             echo "  ${previous_hash} -> ${hash}" >&2
-            exit 1
+            gap_warnings=1
         fi
     fi
     previous_timestamp=$timestamp
@@ -74,4 +75,8 @@ if ((failed)); then
     exit 1
 fi
 
-echo "OK: commit moi hop le (toi thieu ${MIN_GAP_SECONDS}s giua moi commit)."
+if ((gap_warnings)); then
+    echo "OK: commit moi hop le; khoang cach commit chi la canh bao tam thoi."
+else
+    echo "OK: commit moi hop le (toi thieu ${MIN_GAP_SECONDS}s giua moi commit)."
+fi

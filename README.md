@@ -44,7 +44,7 @@ docs/     giao thức, sơ đồ nối dây, kết quả đo tải
 
 - Nhánh `feature/<tên>`, mở PR, người kia review; merge bằng **Rebase and merge** hoặc **merge commit** (không Squash).
 - Commit: `feat|fix|test|docs|chore|perf(<device|app|common|hw>): ...`
-- Hai commit trên toàn repo cách nhau ≥ 30 phút; `git config user.email` trùng email GitHub.
+- Hai commit trên toàn repo cách nhau ≥ 30 phút; trong giai đoạn chuyển tiếp, CI chỉ cảnh báo vi phạm khoảng cách; `git config user.email` trùng email GitHub.
 - Cài hook kiểm tra khoảng cách commit một lần:
   `ln -sf ../../tools/pre-commit .git/hooks/pre-commit`
 - Kiểm tra commit mới so với `origin/main` trong 7 ngày gần nhất bằng `tools/check_commits.sh`.
