@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MIN_GAP_SECONDS="${MIN_GAP_SECONDS:-1800}"
+remote_ref="${PRE_COMMIT_REMOTE_REF:-origin/main}"
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "Loi: pre-commit phai duoc chay trong mot Git repository." >&2
+    exit 1
+fi
+
+if ! git rev-parse --verify --quiet "$remote_ref" >/dev/null; then
+    echo "Canh bao: khong tim thay ${remote_ref}; bo qua kiem tra khoang cach." >&2
+    exit 0
+fi
+
+latest_timestamp=$(git show -s --format=%ct "$remote_ref")
+now=$(date +%s)
+age=$((now - latest_timestamp))
+
+if ((age < 0)); then
+    echo "Loi: thoi gian he thong nho hon thoi gian commit tren ${remote_ref}." >&2
+    exit 1
+fi
+
+if ((age < MIN_GAP_SECONDS)); then
+    remaining=$((MIN_GAP_SECONDS - age))
+    echo "Loi: commit gan nhat tren ${remote_ref} moi ${age}s truoc." >&2
+    echo "Vui long cho them ${remaining}s truoc khi commit." >&2
+    exit 1
+fi
+
+exit 0

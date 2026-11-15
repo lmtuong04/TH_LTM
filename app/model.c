@@ -59,6 +59,7 @@ void model_init(Model *m)
 {
     m->houses = NULL;
     m->n_houses = m->cap_houses = 0;
+    m->app_id[0] = '\0';
 }
 
 void model_free(Model *m)
