@@ -51,3 +51,4 @@ docs/     giao thức, sơ đồ nối dây, kết quả đo tải
 - Cài hook kiểm tra khoảng cách commit một lần:
   `ln -sf ../../tools/pre-commit .git/hooks/pre-commit`
 - Kiểm tra tối thiểu 5 commit của toàn repository trong 7 ngày gần nhất bằng `tools/check_commits.sh`.
+- Khoảng cách 30 phút chỉ được áp dụng từ commit bật chính sách trở đi; các commit lịch sử trước đó không bị kiểm tra lại.

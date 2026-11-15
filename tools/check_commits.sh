@@ -4,6 +4,8 @@ set -euo pipefail
 MIN_COMMITS="${MIN_COMMITS:-5}"
 MIN_GAP_SECONDS="${MIN_GAP_SECONDS:-1800}"
 WINDOW_DAYS="${WINDOW_DAYS:-7}"
+BASE_REF="${BASE_REF:-origin/main}"
+POLICY_START_SUBJECT="${POLICY_START_SUBJECT:-fix: enforce commit gap after policy baseline}"
 
 if ! command -v git >/dev/null 2>&1; then
     echo "Loi: khong tim thay git." >&2
@@ -11,9 +13,16 @@ if ! command -v git >/dev/null 2>&1; then
 fi
 
 mapfile -t commits < <(
-    git log --all --since="${WINDOW_DAYS} days ago" \
+    git log "$BASE_REF" HEAD --since="${WINDOW_DAYS} days ago" \
         --format='%H%x09%at%x09%ae' --reverse
 )
+
+policy_start_hash=$(git log "$BASE_REF" HEAD --fixed-strings \
+    --grep="$POLICY_START_SUBJECT" --format='%H' -n 1)
+if [[ -z "$policy_start_hash" ]]; then
+    echo "Loi: khong tim thay commit bat dau chinh sach: ${POLICY_START_SUBJECT}." >&2
+    exit 1
+fi
 
 if ((${#commits[@]} == 0)); then
     echo "OK: khong co commit nao trong ${WINDOW_DAYS} ngay qua."
@@ -24,16 +33,28 @@ declare -A previous_by_author=()
 declare -A previous_hash_by_author=()
 previous_timestamp=
 previous_hash=
-gap_warnings=0
+policy_started=0
 
 for entry in "${commits[@]}"; do
     IFS=$'\t' read -r hash timestamp email <<<"$entry"
+    if [[ "$hash" == "$policy_start_hash" ]]; then
+        policy_started=1
+        previous_by_author=()
+        previous_hash_by_author=()
+        previous_timestamp=
+        previous_hash=
+        continue
+    fi
+    if (( ! policy_started )); then
+        continue
+    fi
+
     if [[ -n "${previous_by_author["$email"]:-}" ]]; then
         gap=$((timestamp - previous_by_author["$email"]))
         if ((gap < MIN_GAP_SECONDS)); then
-            echo "Canh bao: hai commit cua ${email} cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
+            echo "Loi: hai commit cua ${email} cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
             echo "  ${previous_hash_by_author["$email"]} -> ${hash}" >&2
-            gap_warnings=1
+            exit 1
         fi
     fi
     previous_by_author["$email"]=$timestamp
@@ -42,9 +63,9 @@ for entry in "${commits[@]}"; do
     if [[ -n "$previous_timestamp" ]]; then
         gap=$((timestamp - previous_timestamp))
         if ((gap < MIN_GAP_SECONDS)); then
-            echo "Canh bao: hai commit tren repo cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
+            echo "Loi: hai commit tren repo cach nhau ${gap}s (< ${MIN_GAP_SECONDS}s)." >&2
             echo "  ${previous_hash} -> ${hash}" >&2
-            gap_warnings=1
+            exit 1
         fi
     fi
     previous_timestamp=$timestamp
@@ -58,6 +79,3 @@ if ((commit_count < MIN_COMMITS)); then
 fi
 
 echo "OK: repository co ${commit_count} commit trong ${WINDOW_DAYS} ngay qua."
-if ((gap_warnings)); then
-    echo "OK: khoang cach commit chi la canh bao tam thoi."
-fi
