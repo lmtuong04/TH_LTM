@@ -47,4 +47,4 @@ docs/     giao thức, sơ đồ nối dây, kết quả đo tải
 - Hai commit trên toàn repo cách nhau ≥ 30 phút; `git config user.email` trùng email GitHub.
 - Cài hook kiểm tra khoảng cách commit một lần:
   `ln -sf ../../tools/pre-commit .git/hooks/pre-commit`
-- Kiểm tra commit trong 7 ngày gần nhất bằng `tools/check_commits.sh`.
+- Kiểm tra commit mới so với `origin/main` trong 7 ngày gần nhất bằng `tools/check_commits.sh`.

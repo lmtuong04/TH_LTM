@@ -4,19 +4,26 @@ set -euo pipefail
 MIN_COMMITS="${MIN_COMMITS:-5}"
 MIN_GAP_SECONDS="${MIN_GAP_SECONDS:-1800}"
 WINDOW_DAYS="${WINDOW_DAYS:-7}"
+BASE_REF="${BASE_REF:-origin/main}"
 
 if ! command -v git >/dev/null 2>&1; then
     echo "Loi: khong tim thay git." >&2
     exit 1
 fi
 
+if ! git rev-parse --verify --quiet "$BASE_REF" >/dev/null; then
+    echo "Loi: khong tim thay nhanh goc ${BASE_REF}." >&2
+    exit 1
+fi
+
 mapfile -t commits < <(
-    git log --all --since="${WINDOW_DAYS} days ago" --format='%H%x09%at%x09%ae' --reverse
+    git log "$BASE_REF..HEAD" --since="${WINDOW_DAYS} days ago" \
+        --format='%H%x09%at%x09%ae' --reverse
 )
 
 if ((${#commits[@]} == 0)); then
-    echo "Loi: khong co commit nao trong ${WINDOW_DAYS} ngay qua." >&2
-    exit 1
+    echo "OK: khong co commit moi so voi ${BASE_REF} trong ${WINDOW_DAYS} ngay qua."
+    exit 0
 fi
 
 declare -A author_counts=()
@@ -67,4 +74,4 @@ if ((failed)); then
     exit 1
 fi
 
-echo "OK: commit hop le (toi thieu ${MIN_GAP_SECONDS}s giua moi commit tren repo)."
+echo "OK: commit moi hop le (toi thieu ${MIN_GAP_SECONDS}s giua moi commit)."
