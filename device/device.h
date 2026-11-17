@@ -3,6 +3,10 @@
 #ifndef DEVICE_H
 #define DEVICE_H
 
+#include <stddef.h>
+
+#include "protocol.h"
+
 #define DEV_ID_LEN     32
 #define DEV_NAME_LEN   64
 #define DEV_PASSWD_LEN 64
@@ -38,5 +42,20 @@ typedef struct {
 /* Tính lại power_w theo trạng thái hiện tại của d rồi gán vào d->power_w.
  * Trả về power_w mới. */
 int device_compute_power(Device *d);
+
+const char *device_type_name(DeviceType t);   /* "light" | "fan" | "ac" */
+const char *ac_mode_name(AcMode m);           /* "cool" | "heat" | "dry" */
+
+/* Áp 1 cặp key/value từ lệnh SET (power|speed|mode|temp) vào d,
+ * rồi tính lại công suất. Trả mã phản hồi:
+ *   ST_OK (200)            thành công
+ *   ST_BAD_REQUEST (400)   key không tồn tại trong giao thức
+ *   ST_INVALID_VALUE (422) value sai, sai kiểu thiết bị, hoặc ngoài khoảng */
+int device_set(Device *d, const char *key, const char *value);
+
+/* Ghi mô tả trạng thái dạng "key=value ..." cho lệnh INFO, ví dụ:
+ *   type=ac on=1 mode=cool temp=24 power=1120
+ * Trả số byte ghi (không tính '\0'), -1 nếu out không đủ chỗ. */
+int device_to_string(const Device *d, char *out, size_t cap);
 
 #endif
