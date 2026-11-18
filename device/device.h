@@ -43,6 +43,13 @@ typedef struct {
  * Trả về power_w mới. */
 int device_compute_power(Device *d);
 
+/* View danh sách thiết bị: con trỏ tới mảng do caller cấp + số phần tử.
+ * Lớp phần cứng (hw_*) chỉ đọc qua view này. */
+typedef struct {
+    const Device *items;
+    size_t        n;
+} DeviceList;
+
 const char *device_type_name(DeviceType t);   /* "light" | "fan" | "ac" */
 const char *ac_mode_name(AcMode m);           /* "cool" | "heat" | "dry" */
 
