@@ -29,6 +29,9 @@ make HW=gpio      # bản mô hình, chỉ build trên Raspberry Pi (cần libgp
 Storage của app dùng file text; `app_id` được sinh một lần từ `/dev/urandom`
 và được giữ nguyên khi đọc/ghi lại model.
 
+Chạy `build/smarthome_app` để mở menu quản lý nhà/phòng. Dữ liệu được lưu vào
+`app.dat` khi thoát; menu nhận lựa chọn và tên qua `fgets`.
+
 ## Cấu trúc
 
 ```
@@ -47,4 +50,5 @@ docs/     giao thức, sơ đồ nối dây, kết quả đo tải
 - Hai commit trên toàn repo cách nhau ≥ 30 phút; trong giai đoạn chuyển tiếp, CI chỉ cảnh báo vi phạm khoảng cách; `git config user.email` trùng email GitHub.
 - Cài hook kiểm tra khoảng cách commit một lần:
   `ln -sf ../../tools/pre-commit .git/hooks/pre-commit`
-- Kiểm tra commit mới so với `origin/main` trong 7 ngày gần nhất bằng `tools/check_commits.sh`.
+- Kiểm tra tối thiểu 5 commit của toàn repository trong 7 ngày gần nhất bằng `tools/check_commits.sh`.
+- Khoảng cách 30 phút chỉ được áp dụng từ commit bật chính sách trở đi; các commit lịch sử trước đó không bị kiểm tra lại.
