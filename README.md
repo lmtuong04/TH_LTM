@@ -32,6 +32,10 @@ và được giữ nguyên khi đọc/ghi lại model.
 Chạy `build/smarthome_app` để mở menu quản lý nhà/phòng. Dữ liệu được lưu vào
 `app.dat` khi thoát; menu nhận lựa chọn và tên qua `fgets`.
 
+TCP client B4 nằm trong `app/client.c`: `client_connect()` dùng `getaddrinfo`
+và đặt timeout nhận dữ liệu bằng `SO_RCVTIMEO`; `client_send()`,
+`client_recv()` và `client_exchange()` gửi/nhận một dòng theo giao thức.
+
 ## Cấu trúc
 
 ```
