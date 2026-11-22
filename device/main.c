@@ -29,17 +29,20 @@ static Device make_dev(DeviceType type, const char *id, const char *name,
 
 int main(void)
 {
-    static Device devs[3];
+    static Device devs[5];
     static const int gpio_light1[] = {17};
     static const int gpio_light2[] = {27};
+    static const int gpio_light3[] = {22};
     static const int gpio_fan[]    = {18};
     static const int gpio_ac[]     = {5, 6, 13};
-    DeviceList list = { devs, 3 };
+    DeviceList list = { devs, 5 };
     UdpServer udp;
 
     devs[0] = make_dev(DEV_LIGHT, "LIGHT-01", "Den_phong_khach", gpio_light1, 1);
-    devs[1] = make_dev(DEV_FAN,   "FAN-01",   "Quat_phong_khach", gpio_fan,    1);
-    devs[2] = make_dev(DEV_AC,    "AC-01",    "Dieu_hoa_phong_ngu", gpio_ac,   3);
+    devs[1] = make_dev(DEV_LIGHT, "LIGHT-02", "Den_phong_ngu",   gpio_light2, 1);
+    devs[2] = make_dev(DEV_LIGHT, "LIGHT-03", "Den_bep",         gpio_light3, 1);
+    devs[3] = make_dev(DEV_FAN,   "FAN-01",   "Quat_phong_khach", gpio_fan,    1);
+    devs[4] = make_dev(DEV_AC,    "AC-01",    "Dieu_hoa_phong_ngu", gpio_ac,   3);
 
     hw_init(&list);
 

@@ -65,8 +65,8 @@ static int udp_recv(int fd, char *buf, size_t cap)
     return (int)n;
 }
 
-/* Đẩy 1 datagram từ client vào sock server rồi gọi handler trực tiếp. */
-static void pump_once(int srv, int cli, const DeviceList *list)
+/* Đẩy 1 datagram vào sock server rồi gọi handler trực tiếp. */
+static void pump_once(int srv, const DeviceList *list)
 {
     char buf[PROTO_MAX_LINE];
     struct sockaddr_storage from;
@@ -94,7 +94,7 @@ static void test_scan_replies(void)
     cli = udp_client(bound_port(srv));
 
     udp_send(cli, "SCAN test-app-123\n");
-    pump_once(srv, cli, &list);
+    pump_once(srv, &list);
 
     CHECK(udp_recv(cli, buf, sizeof buf) > 0);
     CHECK_STR(buf, "DEVICE LIGHT-01 light 50001 Den_phong_khach");
@@ -105,9 +105,9 @@ static void test_scan_replies(void)
 
     /* "SCAN" không cần app_id cũng trả lời */
     udp_send(cli, "SCAN\n");
-    pump_once(srv, cli, &list);
+    pump_once(srv, &list);
     CHECK(udp_recv(cli, buf, sizeof buf) > 0);
-    CHECK(strncmp(buf, "DEVICE LIGHT-01 ", 17) == 0);
+    CHECK(strncmp(buf, "DEVICE LIGHT-01 ", 16) == 0);
     /* hút nốt 2 phản hồi còn lại để socket sạch */
     CHECK(udp_recv(cli, buf, sizeof buf) > 0);
     CHECK(udp_recv(cli, buf, sizeof buf) > 0);
@@ -130,13 +130,13 @@ static void test_scan_ignores_others(void)
 
     /* Datagram không phải SCAN -> không phản hồi */
     udp_send(cli, "HELLO\n");
-    pump_once(srv, cli, &list);
+    pump_once(srv, &list);
     CHECK(udp_recv(cli, buf, sizeof buf) == -1);
     CHECK(errno == EAGAIN || errno == EWOULDBLOCK);
 
     /* SCAN sai cú pháp (2 dấu cách) -> proto_split -1 -> bỏ qua */
     udp_send(cli, "SCAN  app\n");
-    pump_once(srv, cli, &list);
+    pump_once(srv, &list);
     CHECK(udp_recv(cli, buf, sizeof buf) == -1);
 
     close(cli);

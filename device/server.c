@@ -47,6 +47,10 @@ void udp_handle_datagram(int sock, const DeviceList *list,
         len = (ssize_t)sizeof line - 1;
     memcpy(line, buf, (size_t)len);
     line[len] = '\0';
+    if (len > 0 && line[len - 1] == '\n')
+        line[--len] = '\0';
+    if (len > 0 && line[len - 1] == '\r')
+        line[--len] = '\0';
 
     argc = proto_split(line, argv, PROTO_MAX_ARGS);
     if (argc < 1 || strcmp(argv[0], "SCAN") != 0)
