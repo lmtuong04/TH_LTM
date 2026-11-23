@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "auth.h"
 #include "device.h"
 
 /* 1 tiến trình UDP discovery: socket + luồng recvfrom. */
@@ -44,17 +45,27 @@ typedef struct {
     pthread_t    thread;
     volatile int running;
     const DeviceList *list;
+    AuthTable *auth;
 } TcpServer;
+
+/* Ngữ cảnh 1 kết nối client: socket + bảng thiết bị + bảng token. */
+typedef struct {
+    int fd;
+    const DeviceList *list;
+    AuthTable *auth;
+} TcpClient;
 
 /* Mở socket TCP listen (SO_REUSEADDR, backlog 16). Trả fd hoặc -1. */
 int tcp_open(int port);
 
 /* Phân lệnh 1 dòng (đã bỏ '\n'). Trả 1: client còn tiếp tục;
- * 0: ngắt kết nối (QUIT) hoặc lỗi gửi. A8/A11 sẽ thêm CONNECT/SET/... */
-int tcp_handle_command(int fd, const DeviceList *list, char *line);
+ * 0: ngắt kết nối (QUIT) hoặc lỗi gửi.
+ * A8: CONNECT + INFO (kiểm token). A11: SET/STATS/PASSWD/TIMER. */
+int tcp_handle_command(TcpClient *c, char *line);
 
 /* Mở socket + tạo luồng accept. 0 ok, -1 lỗi. */
-int  tcp_server_start(TcpServer *srv, const DeviceList *list, int port);
+int  tcp_server_start(TcpServer *srv, const DeviceList *list,
+                      AuthTable *auth, int port);
 void tcp_server_stop(TcpServer *srv);
 
 #endif

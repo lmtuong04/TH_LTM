@@ -63,16 +63,22 @@ static void test_handle_command_unit(void)
 {
     static Device devs[1];
     DeviceList list = { devs, 1 };
+    AuthTable auth;
+    TcpClient c;
     char reply[128];
     int sv[2];
 
     devs[0] = make_dev(DEV_LIGHT, "LIGHT-01");
+    auth_table_init(&auth);
     CHECK(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+    c.fd = sv[0];
+    c.list = &list;
+    c.auth = &auth;
 
     /* lệnh lạ -> 400 BAD_REQUEST, client vẫn tiếp tục */
     {
         char line[] = "FOO bar";
-        CHECK(tcp_handle_command(sv[0], &list, line) == 1);
+        CHECK(tcp_handle_command(&c, line) == 1);
     }
     CHECK(recv_reply(sv[1], reply, sizeof reply) == 1);
     CHECK_STR(reply, "400 BAD_REQUEST");
@@ -80,7 +86,7 @@ static void test_handle_command_unit(void)
     /* dòng rỗng -> 400 */
     {
         char line[] = "";
-        CHECK(tcp_handle_command(sv[0], &list, line) == 1);
+        CHECK(tcp_handle_command(&c, line) == 1);
     }
     CHECK(recv_reply(sv[1], reply, sizeof reply) == 1);
     CHECK_STR(reply, "400 BAD_REQUEST");
@@ -88,7 +94,7 @@ static void test_handle_command_unit(void)
     /* QUIT -> báo ngắt, không gửi phản hồi */
     {
         char line[] = "QUIT";
-        CHECK(tcp_handle_command(sv[0], &list, line) == 0);
+        CHECK(tcp_handle_command(&c, line) == 0);
     }
 
     close(sv[0]);
@@ -100,11 +106,13 @@ static void test_two_clients(void)
     static Device devs[1];
     DeviceList list = { devs, 1 };
     TcpServer srv;
+    AuthTable auth;
     char reply[128];
     int c1, c2;
 
     devs[0] = make_dev(DEV_LIGHT, "LIGHT-01");
-    CHECK(tcp_server_start(&srv, &list, 0) == 0);
+    auth_table_init(&auth);
+    CHECK(tcp_server_start(&srv, &list, &auth, 0) == 0);
 
     /* 2 client cùng lúc: c2 không bị chặn khi c1 còn mở */
     c1 = tcp_client(bound_port(srv.fd));

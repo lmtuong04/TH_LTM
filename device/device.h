@@ -46,8 +46,8 @@ int device_compute_power(Device *d);
 /* View danh sách thiết bị: con trỏ tới mảng do caller cấp + số phần tử.
  * Lớp phần cứng (hw_*) chỉ đọc qua view này. */
 typedef struct {
-    const Device *items;
-    size_t        n;
+    Device *items;
+    size_t  n;
 } DeviceList;
 
 const char *device_type_name(DeviceType t);   /* "light" | "fan" | "ac" */

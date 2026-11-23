@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "auth.h"
 #include "device.h"
 #include "hw.h"
 #include "protocol.h"
@@ -37,6 +38,7 @@ int main(void)
     static const int gpio_fan[]    = {18};
     static const int gpio_ac[]     = {5, 6, 13};
     DeviceList list = { devs, 5 };
+    AuthTable auth;
     UdpServer udp;
     TcpServer tcp;
 
@@ -48,8 +50,9 @@ int main(void)
 
     hw_init(&list);
 
+    auth_table_init(&auth);
     if (udp_server_start(&udp, &list, PROTO_UDP_PORT) != 0 ||
-        tcp_server_start(&tcp, &list, PROTO_TCP_PORT) != 0) {
+        tcp_server_start(&tcp, &list, &auth, PROTO_TCP_PORT) != 0) {
         perror("server_start");
         hw_close();
         return 1;

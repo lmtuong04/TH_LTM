@@ -155,23 +155,78 @@ int tcp_open(int port)
     return fd;
 }
 
-int tcp_handle_command(int fd, const DeviceList *list, char *line)
+static int reply(int fd, int code)
+{
+    return send_line(fd, "%d %s", code, proto_status_text(code)) == 0;
+}
+
+static Device *find_device(const DeviceList *list, const char *id)
+{
+    size_t i;
+
+    if (!list)
+        return NULL;
+    for (i = 0; i < list->n; i++)
+        if (strcmp(list->items[i].id, id) == 0)
+            return &list->items[i];
+    return NULL;
+}
+
+/* CONNECT <device_id> <app_id> <password> -> 200 <token> | 401 | 404 | 422 */
+static int cmd_connect(TcpClient *c, char **argv)
+{
+    Device *d;
+    char token[AUTH_TOKEN_LEN + 1];
+
+    d = find_device(c->list, argv[1]);
+    if (!d)
+        return reply(c->fd, ST_NOT_FOUND) ? 1 : 0;
+    if (strcmp(d->password, argv[3]) != 0)
+        return reply(c->fd, ST_AUTH_FAILED) ? 1 : 0;
+    if (strlen(argv[2]) >= AUTH_APP_ID_LEN)
+        return reply(c->fd, ST_INVALID_VALUE) ? 1 : 0;
+    if (auth_issue(c->auth, argv[2], token, sizeof token) != 0)
+        return reply(c->fd, 500) ? 1 : 0;
+    return send_line(c->fd, "200 %s", token) == 0 ? 1 : 0;
+}
+
+/* INFO <device_id> <app_id> <token> -> 200 <mô tả> | 403 | 404 */
+static int cmd_info(TcpClient *c, char **argv)
+{
+    Device *d;
+    char desc[192];
+
+    d = find_device(c->list, argv[1]);
+    if (!d)
+        return reply(c->fd, ST_NOT_FOUND) ? 1 : 0;
+    if (!auth_check(c->auth, argv[2], argv[3]))
+        return reply(c->fd, ST_FORBIDDEN) ? 1 : 0;
+    device_to_string(d, desc, sizeof desc);
+    return send_line(c->fd, "200 %s", desc) == 0 ? 1 : 0;
+}
+
+int tcp_handle_command(TcpClient *c, char *line)
 {
     char *argv[PROTO_MAX_ARGS];
     int argc = proto_split(line, argv, PROTO_MAX_ARGS);
-    (void)list;
 
-    if (argc >= 1 && strcmp(argv[0], "QUIT") == 0)
+    if (argc < 1)
+        return reply(c->fd, ST_BAD_REQUEST) ? 1 : 0;
+    if (strcmp(argv[0], "QUIT") == 0)
         return 0;
-    /* TODO A8: CONNECT/auth · A11: INFO/SET/STATS/PASSWD/TIMER */
-    return send_line(fd, "%d %s", ST_BAD_REQUEST,
-                     proto_status_text(ST_BAD_REQUEST)) == 0;
+    if (strcmp(argv[0], "CONNECT") == 0) {
+        if (argc != 4)
+            return reply(c->fd, ST_BAD_REQUEST) ? 1 : 0;
+        return cmd_connect(c, argv);
+    }
+    if (strcmp(argv[0], "INFO") == 0) {
+        if (argc != 4)
+            return reply(c->fd, ST_BAD_REQUEST) ? 1 : 0;
+        return cmd_info(c, argv);
+    }
+    /* TODO A11: SET/STATS/PASSWD/TIMER */
+    return reply(c->fd, ST_BAD_REQUEST) ? 1 : 0;
 }
-
-typedef struct {
-    int fd;
-    const DeviceList *list;
-} TcpClient;
 
 static void *client_main(void *arg)
 {
@@ -184,7 +239,7 @@ static void *client_main(void *arg)
         int rc = recv_line(&r, line, sizeof line);
         if (rc != 1)
             break;
-        if (!tcp_handle_command(c->fd, c->list, line))
+        if (!tcp_handle_command(c, line))
             break;
     }
     close(c->fd);
@@ -213,6 +268,7 @@ static void *tcp_thread_main(void *arg)
         }
         c->fd = cfd;
         c->list = srv->list;
+        c->auth = srv->auth;
         if (pthread_create(&t, NULL, client_main, c) != 0) {
             free(c);
             close(cfd);
@@ -223,13 +279,15 @@ static void *tcp_thread_main(void *arg)
     return NULL;
 }
 
-int tcp_server_start(TcpServer *srv, const DeviceList *list, int port)
+int tcp_server_start(TcpServer *srv, const DeviceList *list,
+                     AuthTable *auth, int port)
 {
     memset(srv, 0, sizeof *srv);
     srv->fd = tcp_open(port);
     if (srv->fd < 0)
         return -1;
     srv->list = list;
+    srv->auth = auth;
     srv->running = 1;
     if (pthread_create(&srv->thread, NULL, tcp_thread_main, srv) != 0) {
         close(srv->fd);
