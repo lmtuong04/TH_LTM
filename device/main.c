@@ -1,10 +1,12 @@
 /* device_sim – chạy trên Raspberry Pi (HW=gpio) hoặc laptop (bản console).
  * A6: UDP discovery :50000 trả DEVICE khi nhận SCAN.
+ * A7: TCP :50001, mỗi client 1 luồng (lệnh thật thêm ở A8/A11).
  * Danh sách thiết bị đang hardcode tạm; A10 sẽ đọc devices.conf. */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "auth.h"
 #include "device.h"
 #include "hw.h"
 #include "protocol.h"
@@ -36,7 +38,9 @@ int main(void)
     static const int gpio_fan[]    = {18};
     static const int gpio_ac[]     = {5, 6, 13};
     DeviceList list = { devs, 5 };
+    AuthTable auth;
     UdpServer udp;
+    TcpServer tcp;
 
     devs[0] = make_dev(DEV_LIGHT, "LIGHT-01", "Den_phong_khach", gpio_light1, 1);
     devs[1] = make_dev(DEV_LIGHT, "LIGHT-02", "Den_phong_ngu",   gpio_light2, 1);
@@ -46,18 +50,21 @@ int main(void)
 
     hw_init(&list);
 
-    if (udp_server_start(&udp, &list, PROTO_UDP_PORT) != 0) {
-        perror("udp_server_start");
+    auth_table_init(&auth);
+    if (udp_server_start(&udp, &list, PROTO_UDP_PORT) != 0 ||
+        tcp_server_start(&tcp, &list, &auth, PROTO_TCP_PORT) != 0) {
+        perror("server_start");
         hw_close();
         return 1;
     }
 
-    printf("device_sim: UDP discovery :%d (ban console, Ctrl+C de thoat)\n",
-           PROTO_UDP_PORT);
+    printf("device_sim: UDP :%d + TCP :%d (ban console, Ctrl+C de thoat)\n",
+           PROTO_UDP_PORT, PROTO_TCP_PORT);
     for (;;)
         pause();
 
     /* khong toi day duoc */
+    tcp_server_stop(&tcp);
     udp_server_stop(&udp);
     hw_close();
     return 0;
