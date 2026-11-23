@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -125,6 +126,126 @@ void udp_server_stop(UdpServer *srv)
     if (!srv || srv->fd < 0)
         return;
     srv->running = 0;
+    pthread_join(srv->thread, NULL);
+    close(srv->fd);
+    srv->fd = -1;
+}
+
+/* ---- TCP ---------------------------------------------------------------- */
+
+int tcp_open(int port)
+{
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    int one = 1;
+    struct sockaddr_in addr;
+
+    if (fd < 0)
+        return -1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
+
+    memset(&addr, 0, sizeof addr);
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons((uint16_t)port);
+    if (bind(fd, (struct sockaddr *)&addr, sizeof addr) != 0 ||
+        listen(fd, 16) != 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+int tcp_handle_command(int fd, const DeviceList *list, char *line)
+{
+    char *argv[PROTO_MAX_ARGS];
+    int argc = proto_split(line, argv, PROTO_MAX_ARGS);
+    (void)list;
+
+    if (argc >= 1 && strcmp(argv[0], "QUIT") == 0)
+        return 0;
+    /* TODO A8: CONNECT/auth · A11: INFO/SET/STATS/PASSWD/TIMER */
+    return send_line(fd, "%d %s", ST_BAD_REQUEST,
+                     proto_status_text(ST_BAD_REQUEST)) == 0;
+}
+
+typedef struct {
+    int fd;
+    const DeviceList *list;
+} TcpClient;
+
+static void *client_main(void *arg)
+{
+    TcpClient *c = arg;
+    LineReader r;
+    char line[PROTO_MAX_LINE];
+
+    line_reader_init(&r, c->fd);
+    for (;;) {
+        int rc = recv_line(&r, line, sizeof line);
+        if (rc != 1)
+            break;
+        if (!tcp_handle_command(c->fd, c->list, line))
+            break;
+    }
+    close(c->fd);
+    free(c);
+    return NULL;
+}
+
+static void *tcp_thread_main(void *arg)
+{
+    TcpServer *srv = arg;
+
+    while (srv->running) {
+        int cfd = accept(srv->fd, NULL, NULL);
+        TcpClient *c;
+        pthread_t t;
+
+        if (cfd < 0) {
+            if (errno == EINTR)
+                continue;
+            break;              /* stop() đã shutdown listen socket */
+        }
+        c = malloc(sizeof *c);
+        if (!c) {
+            close(cfd);
+            continue;
+        }
+        c->fd = cfd;
+        c->list = srv->list;
+        if (pthread_create(&t, NULL, client_main, c) != 0) {
+            free(c);
+            close(cfd);
+            continue;
+        }
+        pthread_detach(t);
+    }
+    return NULL;
+}
+
+int tcp_server_start(TcpServer *srv, const DeviceList *list, int port)
+{
+    memset(srv, 0, sizeof *srv);
+    srv->fd = tcp_open(port);
+    if (srv->fd < 0)
+        return -1;
+    srv->list = list;
+    srv->running = 1;
+    if (pthread_create(&srv->thread, NULL, tcp_thread_main, srv) != 0) {
+        close(srv->fd);
+        srv->fd = -1;
+        srv->running = 0;
+        return -1;
+    }
+    return 0;
+}
+
+void tcp_server_stop(TcpServer *srv)
+{
+    if (!srv || srv->fd < 0)
+        return;
+    srv->running = 0;
+    shutdown(srv->fd, SHUT_RDWR);   /* đánh thức accept() đang chặn */
     pthread_join(srv->thread, NULL);
     close(srv->fd);
     srv->fd = -1;

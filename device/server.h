@@ -36,4 +36,25 @@ void udp_serve_loop(int sock, const DeviceList *list, volatile int *stop);
 int  udp_server_start(UdpServer *srv, const DeviceList *list, int port);
 void udp_server_stop(UdpServer *srv);
 
+/* ---- TCP :50001 --------------------------------------------------------- */
+
+/* 1 tiến trình TCP: socket listen + luồng accept; mỗi client 1 luồng con. */
+typedef struct {
+    int          fd;        /* listen socket, -1 khi chưa mở/đã đóng */
+    pthread_t    thread;
+    volatile int running;
+    const DeviceList *list;
+} TcpServer;
+
+/* Mở socket TCP listen (SO_REUSEADDR, backlog 16). Trả fd hoặc -1. */
+int tcp_open(int port);
+
+/* Phân lệnh 1 dòng (đã bỏ '\n'). Trả 1: client còn tiếp tục;
+ * 0: ngắt kết nối (QUIT) hoặc lỗi gửi. A8/A11 sẽ thêm CONNECT/SET/... */
+int tcp_handle_command(int fd, const DeviceList *list, char *line);
+
+/* Mở socket + tạo luồng accept. 0 ok, -1 lỗi. */
+int  tcp_server_start(TcpServer *srv, const DeviceList *list, int port);
+void tcp_server_stop(TcpServer *srv);
+
 #endif
